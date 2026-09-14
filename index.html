@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="paper">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Comment &amp; Suggestion Extractor</title>
+<style>
+/* ============================================================
+   Theme system — every color comes from custom properties.
+   Add a theme by adding one [data-theme="…"] block below and
+   registering it in the THEMES list in the script.
+   ============================================================ */
+:root, [data-theme="paper"] {
+  color-scheme: light;
+  --bg: #e9e7e0;
+  --bg-ink: #1a1a18;
+  --surface: #ffffff;
+  --surface-2: #f4f3ee;
+  --surface-3: #faf9f5;
+  --ink: #161613;
+  --muted: #6f6e68;
+  --line: #161613;
+  --line-soft: #d9d7cf;
+  --accent: #161613;
+  --accent-ink: #ffffff;
+  --sel: #161613;
+  --sel-ink: #ffffff;
+  --drop: #fdf3c9;
+  --err-bg: #fde8e8;
+  --err-ink: #a11a1a;
+  --t-comment: #0a7d33;
+  --t-del: #c62828;
+  --t-ins: #1558c0;
+  --t-rep: #6a1fb0;
+  --t-hl: #9a7b00;
+  --t-move: #0e7a7a;
+  --t-other: #444444;
+  --radius: 3px;
+  --glow: none;
+}
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --bg-ink: #dfe6f1;
+  --surface: #161d2b;
+  --surface-2: #1d2536;
+  --surface-3: #212a3e;
+  --ink: #e2e8f0;
+  --muted: #8b95a8;
+  --line: #38415a;
+  --line-soft: #273049;
+  --accent: #6d97ff;
+  --accent-ink: #0a1020;
+  --sel: #6d97ff;
+  --sel-ink: #0a1020;
+  --drop: #233052;
+  --err-bg: #3b1d24;
+  --err-ink: #ff9d9d;
+  --t-comment: #4ade80;
+  --t-del: #f87171;
+  --t-ins: #6da2ff;
+  --t-rep: #c084fc;
+  --t-hl: #facc15;
+  --t-move: #2dd4bf;
+  --t-other: #cbd5e1;
+  --radius: 8px;
+  --glow: none;
+}
+[data-theme="phosphor"] {
+  color-scheme: dark;
+  --bg: #040704;
+  --bg-ink: #37e06f;
+  --surface: #0a120a;
+  --surface-2: #0e1a0e;
+  --surface-3: #122112;
+  --ink: #4be281;
+  --muted: #2a9a52;
+  --line: #1d5a31;
+  --line-soft: #143d22;
+  --accent: #3fff77;
+  --accent-ink: #031408;
+  --sel: #3fff77;
+  --sel-ink: #031408;
+  --drop: #16301c;
+  --err-bg: #2a0f0f;
+  --err-ink: #ff7b6e;
+  --t-comment: #7dffb0;
+  --t-del: #ff6b6b;
+  --t-ins: #57e6a4;
+  --t-rep: #ffd166;
+  --t-hl: #d4ff5e;
+  --t-move: #5eead4;
+  --t-other: #86efac;
+  --radius: 2px;
+  --glow: 0 0 6px rgba(63, 255, 119, 0.30);
+}
+[data-theme="hermes"] {
+  color-scheme: light;
+  --bg: #0000f2;
+  --bg-ink: #f5f5f5;
+  --surface: #f5f5f5;
+  --surface-2: #e9e9f4;
+  --surface-3: #ffffff;
+  --ink: #00006e;
+  --muted: #5b5ba8;
+  --line: #00006e;
+  --line-soft: #b9b9d9;
+  --accent: #fff200;
+  --accent-ink: #000000;
+  --sel: #0000f2;
+  --sel-ink: #ffffff;
+  --drop: #fff9b3;
+  --err-bg: #ffdddd;
+  --err-ink: #b00000;
+  --t-comment: #008a00;
+  --t-del: #d40000;
+  --t-ins: #e07b00;
+  --t-rep: #7a00ff;
+  --t-hl: #0000f2;
+  --t-move: #00868b;
+  --t-other: #00006e;
+  --radius: 0px;
+  --glow: none;
+}
+[data-theme="nord"] {
+  color-scheme: dark;
+  --bg: #2e3440;
+  --bg-ink: #eceff4;
+  --surface: #3b4252;
+  --surface-2: #434c5e;
+  --surface-3: #4c566a;
+  --ink: #eceff4;
+  --muted: #a9b4c9;
+  --line: #4c566a;
+  --line-soft: #434c5e;
+  --accent: #88c0d0;
+  --accent-ink: #2e3440;
+  --sel: #88c0d0;
+  --sel-ink: #2e3440;
+  --drop: #41506b;
+  --err-bg: #523039;
+  --err-ink: #ffb3b8;
+  --t-comment: #a3be8c;
+  --t-del: #bf616a;
+  --t-ins: #81a1c1;
+  --t-rep: #b48ead;
+  --t-hl: #ebcb8b;
+  --t-move: #8fbcbb;
+  --t-other: #d8dee9;
+  --radius: 6px;
+  --glow: none;
+}
+
+:root {
+  --font: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: var(--font);
+}
+[data-theme="hermes"] {
+  --font-display: "Arial Narrow", "Helvetica Neue", Impact, var(--font);
+}
+
+/* ============ base ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--bg-ink);
+  font-family: var(--font);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-shadow: var(--glow);
+}
+::selection { background: var(--sel); color: var(--sel-ink); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--surface-2); }
+::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: var(--radius); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+button { font: inherit; cursor: pointer; text-shadow: inherit; }
+input, select { font: inherit; text-shadow: inherit; }
+
+/* ============ settings popover ============ */
+.settings-panel {
+  position: absolute; top: 52px; right: 16px; z-index: 30;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  padding: 14px; width: min(320px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 12px;
+}
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.settings-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+.settings-hint { font-size: 10.5px; line-height: 1.55; opacity: 0.65; }
+.settings-hint b { color: var(--ink); }
+.settings-sep { border-top: 1px solid var(--line-soft); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg-btn {
+  background: transparent; color: var(--ink); border: 0;
+  padding: 6px 12px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn.active { background: var(--accent); color: var(--accent-ink); }
+#instrToggle { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+/* Simple interface mode hides the advanced controls */
+[data-uimode="simple"] .expert-only { display: none !important; }
+
+/* ============ toolbar ============ */
+.toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px 0;
+  flex-shrink: 0;
+}
+.search {
+  flex: 1; min-width: 220px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+}
+.search .glyph { opacity: 0.6; }
+.search input {
+  flex: 1; background: none; border: 0; outline: none;
+  color: var(--ink); font-size: 12px; letter-spacing: 0.03em;
+}
+.search input::placeholder { color: var(--muted); }
+.search kbd {
+  font-size: 10px; color: var(--muted);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: 1px 6px;
+}
+.sort-select {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 7px 10px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+/* ============ buttons ============ */
+.btn {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:focus-visible, .card:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============ workspace ============ */
+.workspace {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 14px;
+  padding: 12px 16px;
+}
+.panel {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  min-height: 0; min-width: 0;
+  overflow: hidden;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  flex-shrink: 0;
+}
+.panel-head .dim { opacity: 0.6; font-weight: 400; }
+.panel-head .actions { display: flex; gap: 8px; align-items: center; }
+.panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; overflow: hidden; }
+
+/* tabs */
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.tabs button {
+  background: transparent; color: var(--ink); border: 0;
+  padding: 6px 12px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.tabs button.active { background: var(--accent); color: var(--accent-ink); }
+
+/* filter chips */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.chip {
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 4px 9px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.chip:hover { background: var(--surface-2); }
+.chip.active { background: var(--accent); color: var(--accent-ink); }
+.chip .c { opacity: 0.55; }
+
+/* dropzone */
+#dropzone {
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  padding: 18px 14px;
+  text-align: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+#dropzone:hover, #dropzone.over { background: var(--drop); }
+#dropzone .big { font-family: var(--font-display); font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+#dropzone .small { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+#dropzone .file {
+  display: inline-block; margin-top: 10px;
+  background: var(--accent); color: var(--accent-ink);
+  padding: 3px 10px; font-size: 11px; border-radius: var(--radius);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* status / error strips */
+.strip-msg {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 8px 12px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  flex-shrink: 0;
+}
+#status { background: var(--surface-2); }
+#status .cursor-blink { animation: blink 1s infinite; }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+#error { background: var(--err-bg); color: var(--err-ink); }
+
+/* comment cards */
+#comments { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+.card {
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft);
+  border-left: 6px solid var(--t-other);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: left; width: 100%;
+  display: block;
+}
+.card:hover { background: var(--surface-2); }
+.card.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+.card[data-type="Comment"], .card[data-type="Sticky Note"], .card[data-type="FreeText"], .card[data-type="Caret"], .card[data-type="Stamp"] { border-left-color: var(--t-comment); }
+.card[data-type="Deletion"], .card[data-type="StrikeOut"] { border-left-color: var(--t-del); }
+.card[data-type="Insertion"], .card[data-type="Underline"] { border-left-color: var(--t-ins); }
+.card[data-type="Replacement"], .card[data-type="Squiggly"] { border-left-color: var(--t-rep); }
+.card[data-type="Highlight"] { border-left-color: var(--t-hl); }
+.card[data-type^="Move"] { border-left-color: var(--t-move); }
+.card-top {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--line-soft); padding-bottom: 6px; margin-bottom: 8px;
+}
+.card-top .type { font-weight: 700; }
+.card-top .pg { color: var(--muted); }
+.quote {
+  font-size: 12px; line-height: 1.55;
+  color: var(--ink);
+  background: var(--surface-2);
+  border-left: 2px solid var(--line-soft);
+  padding: 6px 9px; margin-bottom: 8px;
+  word-break: break-word;
+}
+.quote del { color: var(--t-del); }
+.quote ins { color: var(--t-ins); text-decoration: none; }
+.quote mark { background: var(--drop); color: inherit; padding: 0 1px; }
+.comment-text { font-size: 12.5px; line-height: 1.55; word-break: break-word; }
+.comment-text .noreply { font-style: italic; opacity: 0.55; }
+.replies { margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+.reply { font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.reply .ra { color: var(--ink); }
+.meta {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin-top: 8px; padding-top: 6px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted);
+}
+.empty {
+  border: 1.5px dashed var(--line-soft); border-radius: var(--radius);
+  padding: 34px 16px; text-align: center;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+
+/* markdown panel */
+#mdPrev, #mdSrc { flex: 1; min-height: 0; overflow: auto; }
+#mdPrev {
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: 16px; font-size: 13px; line-height: 1.6;
+}
+#mdPrev h1 { font-family: var(--font-display); font-size: 19px; margin-bottom: 8px; }
+#mdPrev h2 { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.03em; text-transform: none; margin: 14px 0 4px; }
+#mdPrev h2:first-child { margin-top: 0; }
+#mdPrev blockquote {
+  border-left: 3px solid var(--line-soft);
+  background: var(--surface-2);
+  margin: 6px 0; padding: 6px 10px; font-size: 12.5px;
+}
+#mdPrev hr { border: 0; border-top: 1px solid var(--line-soft); margin: 12px 0; opacity: 0.7; }
+#mdPrev del { color: var(--t-del); }
+#mdPrev ins { color: var(--t-ins); text-decoration: none; }
+#mdPrev .hl { background: var(--drop); outline: 1px solid var(--accent); }
+#mdSrc {
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: 16px;
+  font-family: var(--font); font-size: 11.5px; line-height: 1.65;
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* document preview */
+#docWrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.doc-bar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+.doc-bar .btn { padding: 5px 10px; }
+.doc-bar-sep { width: 1px; height: 18px; background: var(--line-soft); margin: 0 2px; }
+.pginfo { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.pginfo.dim { opacity: 0.55; }
+#docViewer {
+  flex: 1; min-height: 0; overflow: auto;
+  background: var(--surface-3);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: 14px;
+}
+.doc-page { position: relative; margin: 0 auto; width: fit-content; max-width: 100%; }
+.doc-page img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line-soft); }
+.anno-box {
+  position: absolute;
+  border: 2px solid var(--t-hl);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.anno-box:hover { border-width: 3px; }
+.anno-box .anno-label {
+  position: absolute; top: -11px; left: -2px;
+  background: var(--t-hl); color: #ffffff;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 1px 5px; border-radius: 2px;
+  text-shadow: none;
+}
+.anno-box.loc { box-shadow: 0 0 0 3px var(--drop); }
+
+/* footer + toast */
+.footer {
+  display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 8px 16px 12px;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7;
+  flex-shrink: 0;
+}
+#toast {
+  position: fixed; bottom: 22px; left: 50%;
+  transform: translate(-50%, 16px);
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid var(--line);
+  padding: 10px 16px;
+  font-size: 12px; letter-spacing: 0.04em;
+  opacity: 0; pointer-events: none;
+  transition: all 0.2s;
+  border-radius: var(--radius);
+  z-index: 10;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 900px) {
+  /* Narrow / portrait: stack the panels; both stay visible and scroll internally */
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 11fr) minmax(0, 9fr);
+    gap: 10px;
+    padding: 10px 12px 6px;
+  }
+  .toolbar { padding: 8px 12px 0; gap: 8px; }
+  .panel { min-height: 0; }
+  .panel-head { padding: 7px 12px; flex-wrap: wrap; row-gap: 6px; }
+  .panel-body { padding: 10px 12px; gap: 8px; }
+  #dropzone { padding: 10px; }
+  #dropzone .big { font-size: 15px; }
+  #docViewer { padding: 10px; }
+  .doc-bar { flex-wrap: wrap; row-gap: 6px; }
+  .footer { padding: 4px 12px 8px; }
+}
+@media (max-width: 560px) {
+  body { font-size: 12px; }
+  .toolbar .search { flex-basis: 100%; order: -1; }
+  .search kbd { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <label class="search">
+    <span class="glyph" aria-hidden="true">⌕</span>
+    <input id="q" type="text" placeholder="Search quote, comment, author…" autocomplete="off" aria-label="Search comments">
+    <kbd>/</kbd>
+  </label>
+  <select class="sort-select expert-only" id="sort" aria-label="Sort comments">
+    <option value="doc">Sort · Document</option>
+    <option value="page">Sort · Page</option>
+    <option value="type">Sort · Type</option>
+    <option value="author">Sort · Author</option>
+  </select>
+  <button class="btn" id="resetBtn">Reset</button>
+  <button class="btn" id="settingsBtn" aria-haspopup="true" aria-expanded="false" title="Settings">⚙</button>
+</div>
+
+<div id="settingsPanel" class="settings-panel" hidden>
+  <div class="settings-row">
+    <span class="settings-label">Interface mode</span>
+    <span class="seg" role="group" aria-label="Interface mode">
+      <button class="seg-btn" id="modeSimple">Simple</button>
+      <button class="seg-btn" id="modeExpert">Expert</button>
+    </span>
+  </div>
+  <p class="settings-hint">Expert adds render DPI, filters and sorting.</p>
+  <div class="settings-row">
+    <label class="settings-label" for="instrToggle">Instructions in prompt file</label>
+    <input type="checkbox" id="instrToggle">
+  </div>
+  <div class="settings-row">
+    <label class="settings-label" for="theme-select">Theme</label>
+    <select id="theme-select" aria-label="Color theme"></select>
+  </div>
+  <div class="settings-sep"></div>
+  <p class="settings-hint"><b>/</b> search · <b>↑↓</b> browse · <b>Enter</b> locate · <b>Esc</b> clear</p>
+</div>
+
+<main class="workspace">
+  <!-- Left: file + extracted comments -->
+  <section class="panel" aria-label="Extracted comments">
+    <div class="panel-head">
+      <span>Extracted <span class="dim" id="count"></span></span>
+      <span class="dim" id="fileLabel"></span>
+    </div>
+    <div class="panel-body">
+      <div id="chips" class="chips expert-only"></div>
+      <div id="dropzone" role="button" tabindex="0" aria-label="Upload PDF or DOCX">
+        <input type="file" id="file-input" accept=".pdf,.docx" hidden>
+        <div class="big">Drop PDF / DOCX here</div>
+        <div class="small">or click to browse</div>
+        <div id="fileChip" hidden><span class="file"></span></div>
+      </div>
+      <div id="status" class="strip-msg" hidden><span class="cursor-blink">■</span><span id="status-text">Parsing…</span></div>
+      <div id="error" class="strip-msg" hidden><span>[!]</span><span id="error-text"></span></div>
+      <div id="filemode" class="strip-msg" hidden><span>[!]</span><span>Opened from disk — some browsers block parts of the app over <i>file://</i>. Serve it instead: <b>python3 -m http.server</b> in this folder, then open http://localhost:8000.</span></div>
+      <div id="comments" role="listbox" aria-label="Comments list">
+        <div class="empty">Awaiting a document…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: markdown output -->
+  <section class="panel" aria-label="Markdown output">
+    <div class="panel-head">
+      <span class="actions">
+        <span class="tabs">
+          <button id="tabDoc">Document</button>
+          <button id="tabPrev" class="active">Prompt</button>
+          <button id="tabSrc">Source</button>
+        </span>
+        <button class="btn" id="copyBtn">Copy</button>
+        <button class="btn primary" id="saveBtn">Save .md</button>
+      </span>
+    </div>
+    <div class="panel-body">
+      <div id="docWrap" hidden>
+        <div class="doc-bar" id="docBar">
+          <button class="btn" id="pgPrev" title="Previous page">◀</button>
+          <span class="pginfo" id="pgInfo">Page —</span>
+          <button class="btn" id="pgNext" title="Next page">▶</button>
+          <span class="doc-bar-sep expert-only"></span>
+          <button class="btn expert-only" id="zoomOut" title="Lower resolution">−</button>
+          <span class="pginfo expert-only" id="zoomInfo">3.0×</span>
+          <button class="btn expert-only" id="zoomIn" title="Higher resolution (DPI)">+</button>
+        </div>
+        <div id="docViewer"><div class="empty">Load a document…</div></div>
+      </div>
+      <div id="mdPrev" aria-label="Markdown preview"><div class="empty">Load a document…</div></div>
+      <pre id="mdSrc" hidden aria-label="Markdown source"># Load a PDF or DOCX file to generate the prompt file…</pre>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>v1.6.0 · local only</span>
+  <span id="mdStat"></span>
+</footer>
+
+<div id="toast" role="status"></div>
+
+<script src="./vendor/fflate.min.js"></script>
+<script src="./vendor/pdf.min.js"></script>
+<script src="./extractor-core.js"></script>
+<script>
+"use strict";
+
+/* ---------- Theme system ---------- */
+const THEMES = [
+  { id: "paper",    label: "Paper" },
+  { id: "midnight", label: "Midnight" },
+  { id: "phosphor", label: "Phosphor" },
+  { id: "hermes",   label: "Hermes" },
+  { id: "nord",     label: "Nord" },
+];
+const THEME_KEY = "extractor-theme";
+const themeSelect = document.getElementById("theme-select");
+for (const t of THEMES) {
+  const opt = document.createElement("option");
+  opt.value = t.id; opt.textContent = t.label;
+  themeSelect.appendChild(opt);
+}
+function applyTheme(id) {
+  const theme = THEMES.some(t => t.id === id) ? id : THEMES[0].id;
+  document.documentElement.setAttribute("data-theme", theme);
+  themeSelect.value = theme;
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* private mode */ }
+}
+themeSelect.addEventListener("change", e => applyTheme(e.target.value));
+let storedTheme = null;
+try { storedTheme = localStorage.getItem(THEME_KEY); } catch (e) { /* private mode */ }
+// A #theme=<id> hash deep-link wins over the stored preference.
+const hashTheme = (location.hash.match(/theme=([\w-]+)/) || [])[1];
+applyTheme(hashTheme || storedTheme || "paper");
+// Warn when the page wasn't loaded through the backend server.
+if (location.protocol === "file:") document.getElementById("filemode").hidden = false;
+
+/* ---------- Elements ---------- */
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("file-input");
+const fileChip = document.getElementById("fileChip");
+const statusEl = document.getElementById("status");
+const statusText = document.getElementById("status-text");
+const errorEl = document.getElementById("error");
+const errorText = document.getElementById("error-text");
+const commentsEl = document.getElementById("comments");
+const countEl = document.getElementById("count");
+const fileLabel = document.getElementById("fileLabel");
+const chipsEl = document.getElementById("chips");
+const mdPrev = document.getElementById("mdPrev");
+const mdSrc = document.getElementById("mdSrc");
+const mdStat = document.getElementById("mdStat");
+const q = document.getElementById("q");
+const sort = document.getElementById("sort");
+const tabDoc = document.getElementById("tabDoc");
+const tabPrev = document.getElementById("tabPrev");
+const tabSrc = document.getElementById("tabSrc");
+const docWrap = document.getElementById("docWrap");
+const docBar = document.getElementById("docBar");
+const docViewer = document.getElementById("docViewer");
+const pgPrev = document.getElementById("pgPrev");
+const pgNext = document.getElementById("pgNext");
+const pgInfo = document.getElementById("pgInfo");
+const zoomOut = document.getElementById("zoomOut");
+const zoomIn = document.getElementById("zoomIn");
+const zoomInfo = document.getElementById("zoomInfo");
+const copyBtn = document.getElementById("copyBtn");
+const saveBtn = document.getElementById("saveBtn");
+const instrToggle = document.getElementById("instrToggle");
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsPanel = document.getElementById("settingsPanel");
+const modeSimple = document.getElementById("modeSimple");
+const modeExpert = document.getElementById("modeExpert");
+
+/* ---------- State ---------- */
+let allComments = [];
+let filename = "";
+let markdownText = "";
+let hasData = false;
+let activeFilter = "all";
+let query = "";
+let sortBy = "doc";
+let selectedIdx = null;   // index into allComments (document order)
+let activeTab = "prompt"; // "document" | "prompt" | "source"
+
+// Document preview state
+let activeFileBytes = null;  // ArrayBuffer — everything runs in the browser
+let docKind = null;          // "pdf" | "docx"
+let docxParagraphs = null;   // DOCX text preview
+let docSearchCursor = 0;
+let pdfPage = 1;
+let pdfTotal = 0;
+const pageCache = new Map(); // "<scale>:<page>" -> page payload from /api/document/.../page
+let docxLoc = null;          // { idx, page, rect } — last DOCX locate hit
+
+// Render resolution for PDF pages. Steps are in PDF zoom units (1x = 72 DPI).
+// Default bumps one step on retina-class displays so text stays crisp.
+const SCALE_STEPS = [1, 1.5, 2, 3, 4, 6];
+let pdfScale = 3;
+try {
+  const storedScale = parseFloat(localStorage.getItem("extractor-pdf-scale"));
+  if (storedScale) pdfScale = storedScale;
+  else if ((window.devicePixelRatio || 1) >= 1.5 && !storedScale) pdfScale = 4;
+} catch (e) { /* private mode */ }
+pdfScale = SCALE_STEPS.includes(pdfScale) ? pdfScale : 3;
+zoomInfo.textContent = `${pdfScale}× · ${Math.round(72 * pdfScale)} dpi`;
+
+/* ---------- Interface mode (Simple / Expert) ---------- */
+const UI_MODE_KEY = "extractor-ui-mode";
+function applyUiMode(mode) {
+  const m = mode === "simple" ? "simple" : "expert";
+  document.documentElement.setAttribute("data-uimode", m);
+  modeSimple.classList.toggle("active", m === "simple");
+  modeExpert.classList.toggle("active", m === "expert");
+  try { localStorage.setItem(UI_MODE_KEY, m); } catch (e) { /* private mode */ }
+}
+modeSimple.addEventListener("click", () => applyUiMode("simple"));
+modeExpert.addEventListener("click", () => applyUiMode("expert"));
+settingsBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  settingsPanel.hidden = !settingsPanel.hidden;
+  settingsBtn.setAttribute("aria-expanded", String(!settingsPanel.hidden));
+});
+document.addEventListener("click", (e) => {
+  if (!settingsPanel.hidden && !settingsPanel.contains(e.target)) {
+    settingsPanel.hidden = true;
+    settingsBtn.setAttribute("aria-expanded", "false");
+  }
+});
+let storedMode = null;
+try { storedMode = localStorage.getItem(UI_MODE_KEY); } catch (e) { /* private mode */ }
+applyUiMode(storedMode || "expert");
+
+/* ---------- Prompt instructions (optional, off by default) ---------- */
+const INSTR_KEY = "extractor-instructions";
+let includeInstructions = false;
+try { includeInstructions = localStorage.getItem(INSTR_KEY) === "1"; } catch (e) { /* private mode */ }
+instrToggle.checked = includeInstructions;
+instrToggle.addEventListener("change", () => {
+  includeInstructions = instrToggle.checked;
+  try { localStorage.setItem(INSTR_KEY, includeInstructions ? "1" : "0"); } catch (e) { /* private mode */ }
+  if (hasData) markdownText = toMarkdown(allComments, filename, includeInstructions);
+  renderPreview(false);
+  toast(includeInstructions ? "Instructions on" : "Instructions off");
+});
+
+/* ---------- Utilities ---------- */
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => t.classList.remove("show"), 1700);
+}
+function typeColor(t) {
+  const s = (t || "").toLowerCase();
+  if (s.includes("delet") || s.includes("strike")) return "var(--t-del)";
+  if (s.includes("insert") || s.includes("underline")) return "var(--t-ins)";
+  if (s.includes("replac") || s.includes("squiggly")) return "var(--t-rep)";
+  if (s.includes("move")) return "var(--t-move)";
+  if (s.includes("highlight")) return "var(--t-hl)";
+  return "var(--t-comment)";
+}
+
+function filtered() {
+  let rows = allComments.map((c, i) => ({ ...c, _i: i }));
+  if (activeFilter !== "all") rows = rows.filter(c => c.type === activeFilter);
+  if (query) {
+    const s = query.toLowerCase();
+    rows = rows.filter(c => [c.quote, c.comment, c.author, c.type, c.del_text, c.ins_text, c.quoted_text]
+      .map(v => (v || "")).join(" ").toLowerCase().includes(s));
+  }
+  if (sortBy === "type") rows.sort((a, b) => a.type.localeCompare(b.type) || a._i - b._i);
+  else if (sortBy === "author") rows.sort((a, b) => (a.author || "").localeCompare(b.author || "") || a._i - b._i);
+  else if (sortBy === "page") rows.sort((a, b) => ((a.page ?? 1e9) - (b.page ?? 1e9)) || a._i - b._i);
+  return rows;
+}
+
+/* ---------- Card rendering ---------- */
+function contextHTML(c) {
+  const hi = (t) => {
+    if (!query) return esc(t);
+    try {
+      return esc(t).replace(new RegExp("(" + query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>");
+    } catch (e) { return esc(t); }
+  };
+  if (c.type === "Replacement" && (c.del_text || c.ins_text))
+    return `<del>${hi(c.del_text || "")}</del> → <ins>${hi(c.ins_text || "")}</ins>`;
+  if ((c.type === "Deletion" || c.type === "StrikeOut") && c.del_text)
+    return `<del>${hi(c.del_text)}</del>`;
+  if (c.type === "Insertion" && c.ins_text)
+    return `<ins>+ ${hi(c.ins_text)}</ins>`;
+  if ((c.type || "").startsWith("Move")) {
+    const bit = c.del_text ? `<del>${hi(c.del_text)}</del>` : "";
+    const bit2 = c.ins_text ? ` <ins>${hi(c.ins_text)}</ins>` : "";
+    return `${bit}${bit2}` || (c.quoted_text ? `“${hi(c.quoted_text)}”` : "");
+  }
+  return c.quoted_text ? `“${hi(c.quoted_text)}”` : "";
+}
+
+function repliesHTML(commentText) {
+  const lines = (commentText || "").split("\n");
+  const main = [];
+  const replies = [];
+  for (const line of lines) {
+    if (line.startsWith("↳ ")) replies.push(line.slice(2));
+    else main.push(line);
+  }
+  let html = esc(main.join("\n"));
+  if (!html.trim()) html = `<span class="noreply">(annotation mark without text)</span>`;
+  if (replies.length) {
+    html += `<div class="replies">` + replies.map(r => {
+      const m = r.match(/^([^:()]+(?:\s*\([^)]*\))?):\s*([\s\S]*)$/);
+      if (m) return `<div class="reply"><span class="ra">↳ ${esc(m[1])}:</span> ${esc(m[2])}</div>`;
+      return `<div class="reply">↳ ${esc(r)}</div>`;
+    }).join("") + `</div>`;
+  }
+  return html;
+}
+
+function cardHTML(c, pos) {
+  const pageLabel = c.page ? ` · p.${c.page}` : "";
+  const metaBits = [];
+  if (c.author && c.author !== "Unknown Reviewer") metaBits.push(esc(c.author));
+  if (c.date) metaBits.push(esc(c.date));
+  const ctx = contextHTML(c);
+  return `
+  <button class="card${c._i === selectedIdx ? " selected" : ""}" data-i="${c._i}" data-type="${esc(c.type)}" role="option" aria-selected="${c._i === selectedIdx}">
+    <div class="card-top">
+      <span class="type">[${c._i + 1}] ${esc(c.type)}${pageLabel}</span>
+      <span class="pg">${esc(pos + 1)}/${esc(allComments.length)}</span>
+    </div>
+    ${ctx ? `<div class="quote">${ctx}</div>` : ""}
+    <div class="comment-text">${repliesHTML(c.comment)}</div>
+    ${metaBits.length ? `<div class="meta"><span>${metaBits.join(" · ")}</span><span class="locate">locate ⌖</span></div>` : ""}
+  </button>`;
+}
+
+/* ---------- Preview rendering ---------- */
+function previewHTML(rows) {
+  if (!hasData) return `<div class="empty">Load a document…</div>`;
+  let html = `<h1>Review: ${esc(filename)}</h1>`;
+  if (includeInstructions) {
+    html += `<blockquote>For each item, locate the comment in the source document using the page (when given) and the quoted text.</blockquote>`;
+  }
+  html += `<hr>`;
+  html += rows.map(c => {
+    const pageLabel = c.page ? `Page ${c.page} — ` : "";
+    const ctx = contextHTML(c);
+    return `<h2 id="s${c._i}">[${c._i + 1}] ${pageLabel}${esc(c.type)}</h2>
+    ${ctx ? `<blockquote>${ctx}<br>${esc(c.author || "")}${c.date ? " · " + esc(c.date) : ""}</blockquote>` : ""}
+    <div class="comment-text">${repliesHTML(c.comment)}</div><hr>`;
+  }).join("");
+  return html;
+}
+
+/* ---------- Render pipeline ---------- */
+function renderChips() {
+  if (!hasData) { chipsEl.innerHTML = ""; return; }
+  const types = [...new Set(allComments.map(c => c.type))];
+  const rows = filtered();
+  const chips = ["all", ...types].filter(t => t === "all" || allComments.some(c => c.type === t));
+  chipsEl.innerHTML = chips.map(t => {
+    const n = t === "all" ? rows.length : rows.filter(c => c.type === t).length;
+    return `<button class="chip${t === activeFilter ? " active" : ""}" data-f="${esc(t)}">${esc(t)} <span class="c">[${n}]</span></button>`;
+  }).join("");
+  chipsEl.querySelectorAll(".chip").forEach(b => {
+    b.addEventListener("click", () => { activeFilter = b.dataset.f; renderAll(false); });
+  });
+}
+
+function renderList() {
+  const rows = filtered();
+  countEl.textContent = hasData ? `· ${rows.length}` : "";
+  if (!hasData) {
+    commentsEl.innerHTML = `<div class="empty">Awaiting a document…</div>`;
+    return;
+  }
+  if (!rows.length) {
+    commentsEl.innerHTML = `<div class="empty">No matches</div>`;
+    return;
+  }
+  if (selectedIdx === null || !rows.some(c => c._i === selectedIdx)) selectedIdx = rows[0]._i;
+  commentsEl.innerHTML = rows.map((c, pos) => cardHTML(c, pos)).join("");
+  commentsEl.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      const goDoc = !!(e.target.closest && e.target.closest(".locate"));
+      const idx = Number(card.dataset.i);
+      selectedIdx = idx;
+      renderList();
+      renderPreview(false);
+      locate(idx, true);
+      locateInDocument(idx, goDoc);
+    });
+  });
+}
+
+function renderPreview(scrollToSel = false) {
+  const rows = filtered();
+  mdPrev.innerHTML = previewHTML(rows);
+  mdSrc.textContent = markdownText || "# Load a PDF or DOCX file to generate the prompt file…";
+  const bytes = new Blob([markdownText]).size;
+  mdStat.textContent = hasData ? `${allComments.length} items · ${(bytes / 1024).toFixed(0)} kB` : "";
+  if (scrollToSel && selectedIdx !== null) locate(selectedIdx, true);
+}
+
+function renderAll(scrollToSel) {
+  renderChips();
+  renderList();
+  renderPreview(scrollToSel);
+}
+
+function locate(idx, scroll) {
+  mdPrev.querySelectorAll(".hl").forEach(el => el.classList.remove("hl"));
+  const h = document.getElementById("s" + idx);
+  if (h) {
+    h.classList.add("hl");
+    if (scroll) h.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  const card = commentsEl.querySelector(`.card[data-i="${idx}"]`);
+  if (card && scroll) card.scrollIntoView({ block: "nearest" });
+}
+
+/* ---------- Upload flow ---------- */
+dropzone.addEventListener("click", e => { if (e.target !== fileInput) fileInput.click(); });
+dropzone.addEventListener("keydown", e => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+});
+fileInput.addEventListener("click", e => e.stopPropagation());
+fileInput.addEventListener("change", e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+  e.target.value = "";
+});
+["dragenter", "dragover"].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove("over"); }));
+dropzone.addEventListener("drop", e => {
+  const files = e.dataTransfer.files;
+  if (files.length) handleFile(files[0]);
+});
+
+function handleFile(file) {
+  const name = file.name.toLowerCase();
+  if (!name.endsWith(".pdf") && !name.endsWith(".docx")) {
+    showError("Only PDF and DOCX files are supported.");
+    return;
+  }
+  activeFile = file;
+  uploadAndProcess(file);
+}
+
+let activeFile = null;
+async function uploadAndProcess(file) {
+  showStatus(`Reading “${file.name}”…`);
+  try {
+    const bytes = await file.arrayBuffer();
+
+    allComments = file.name.toLowerCase().endsWith(".pdf")
+      ? await extractPdf(bytes, file.name)
+      : await extractDocx(bytes, file.name);
+    filename = file.name;
+    markdownText = toMarkdown(allComments, filename, includeInstructions);
+
+    // document preview state
+    activeFileBytes = bytes;
+    docKind = file.name.toLowerCase().endsWith(".pdf") ? "pdf" : "docx";
+    pageCache.clear();
+    docxParagraphs = null;
+    docSearchCursor = 0;
+    pdfPage = 1;
+    docBar.style.display = docKind === "pdf" ? "" : "none";
+    docViewer.innerHTML = `<div class="empty">Loading preview…</div>`;
+
+    hasData = true;
+    activeFilter = "all";
+    query = ""; q.value = "";
+    sortBy = "doc"; sort.value = "doc";
+    selectedIdx = null;
+
+    fileChip.hidden = false;
+    fileChip.querySelector(".file").textContent = `▸ ${file.name}`;
+    fileLabel.textContent = "· " + file.name;
+
+    renderAll(true);
+    fetchPage(1).catch(() => {});   // warm the page cache (renders in-browser)
+    toast(`${allComments.length} item${allComments.length === 1 ? "" : "s"} extracted ✓`);
+  } catch (err) {
+    console.error(err);
+    if (err && err.name === "StartupError") {
+      showError("Could not load the PDF engine (vendor/ files missing?).");
+    } else {
+      showError(err.message || "Could not read this document.");
+    }
+  } finally {
+    hideStatus();
+  }
+}
+
+function showStatus(text) {
+  statusText.textContent = text;
+  statusEl.hidden = false;
+  errorEl.hidden = true;
+}
+function hideStatus() { statusEl.hidden = true; }
+function showError(msg) {
+  errorText.textContent = msg;
+  errorEl.hidden = false;
+  statusEl.hidden = true;
+}
+
+/* ---------- Toolbar interactions ---------- */
+q.addEventListener("input", () => { query = q.value.trim(); renderAll(false); });
+sort.addEventListener("change", () => { sortBy = sort.value; renderAll(false); });
+document.getElementById("resetBtn").addEventListener("click", () => {
+  query = ""; q.value = ""; activeFilter = "all"; sortBy = "doc"; sort.value = "doc";
+  renderAll(false);
+  toast("Filters cleared");
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !settingsPanel.hidden) {
+    settingsPanel.hidden = true;
+    settingsBtn.setAttribute("aria-expanded", "false");
+    return;
+  }
+  if (e.key === "/" && document.activeElement !== q && !["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+    e.preventDefault(); q.focus();
+  }
+  if (e.key === "Escape" && document.activeElement === q) {
+    q.value = ""; query = ""; renderAll(false); q.blur();
+  }
+  if (!hasData) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+    e.preventDefault();
+    const rows = filtered();
+    if (!rows.length) return;
+    let pos = rows.findIndex(c => c._i === selectedIdx);
+    pos = pos === -1 ? 0 : (pos + (e.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length;
+    selectedIdx = rows[pos]._i;
+    renderList();
+    renderPreview(false);
+    locate(selectedIdx, true);
+    locateInDocument(selectedIdx, false);
+  }
+  if (e.key === "Enter" && document.activeElement.classList?.contains("card")) {
+    e.preventDefault();
+    locateInDocument(selectedIdx ?? 0, true);
+  }
+});
+
+/* ---------- Tabs / document preview / copy / save ---------- */
+function showTab(tab) {
+  activeTab = tab;
+  tabDoc.classList.toggle("active", tab === "document");
+  tabPrev.classList.toggle("active", tab === "prompt");
+  tabSrc.classList.toggle("active", tab === "source");
+  docWrap.hidden = tab !== "document";
+  mdPrev.hidden = tab !== "prompt";
+  mdSrc.hidden = tab !== "source";
+  if (tab === "document") ensureDocPreview();
+}
+tabDoc.addEventListener("click", () => showTab("document"));
+tabPrev.addEventListener("click", () => showTab("prompt"));
+tabSrc.addEventListener("click", () => showTab("source"));
+
+/* ----- Document preview ----- */
+function docReady() { return !!(activeFileBytes && hasData); }
+
+async function fetchPage(n) {
+  const key = `${pdfScale}:${n}`;
+  if (pageCache.has(key)) return pageCache.get(key);
+  const data = await renderPdfPage(activeFileBytes, n, pdfScale);
+  pageCache.set(key, data);
+  return data;
+}
+
+function setPdfScale(scale) {
+  const next = SCALE_STEPS.includes(scale) ? scale : pdfScale;
+  if (next === pdfScale) return;
+  pdfScale = next;
+  pageCache.clear(); // don't keep stale-resolution rasters around
+  try { localStorage.setItem("extractor-pdf-scale", String(pdfScale)); } catch (e) { /* private mode */ }
+  if (docReady() && activeTab === "document") showPdfPage(pdfPage, selectedIdx);
+}
+
+async function showPdfPage(n, locateIdx = null) {
+  docViewer.innerHTML = `<div class="empty">Rendering page ${n}…</div>`;
+  let data;
+  try {
+    data = await fetchPage(n);
+  } catch (err) {
+    docViewer.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+    return;
+  }
+  pdfPage = data.page;
+  pdfTotal = data.total_pages;
+  pgInfo.textContent = `Page ${pdfPage} / ${pdfTotal}`;
+  zoomInfo.textContent = `${pdfScale}× · ${Math.round(72 * pdfScale)} dpi`;
+
+  const wrap = document.createElement("div");
+  wrap.className = "doc-page";
+  const img = document.createElement("img");
+  img.alt = `Page ${pdfPage}`;
+  img.src = data.image;
+  wrap.appendChild(img);
+
+  const rectsEqual = (a, b) => Array.isArray(a) && a.length === 4 &&
+    a.every((v, i) => Math.abs(v - b[i]) < 0.01);
+  const sameKey = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const boxInfos = (data.boxes || []).map((b) => {
+    const key = b.rect || b.quadPoints || null;
+    const match = allComments.find(
+      (c) => c.page === pdfPage && c.rect && (sameKey(c.rect, key) || rectsEqual(c.rect, key))
+    );
+    return { raw: b, matchIdx: match ? allComments.indexOf(match) : null };
+  });
+  for (const { raw: b, matchIdx } of boxInfos) {
+    const [x0, y0, x1, y1] = b.rect;
+    const box = document.createElement("div");
+    box.className = "anno-box" + (matchIdx !== null && matchIdx === selectedIdx ? " loc" : "");
+    box.style.left = (x0 / data.width * 100) + "%";
+    box.style.top = (y0 / data.height * 100) + "%";
+    box.style.width = ((x1 - x0) / data.width * 100) + "%";
+    box.style.height = ((y1 - y0) / data.height * 100) + "%";
+    const type = matchIdx !== null ? allComments[matchIdx].type : b.subtype;
+    const color = typeColor(type);
+    box.style.borderColor = color;
+    box.title = matchIdx !== null ? `#${matchIdx + 1} ${allComments[matchIdx].type}` : b.subtype;
+    if (matchIdx !== null) {
+      const label = document.createElement("span");
+      label.className = "anno-label";
+      label.style.background = color;
+      label.textContent = `${matchIdx + 1}`;
+      box.appendChild(label);
+      box.addEventListener("click", () => {
+        selectedIdx = matchIdx;
+        renderList();
+        renderPreview(false);
+        locate(matchIdx, false);
+        showPdfPage(pdfPage, matchIdx);
+      });
+    }
+    wrap.appendChild(box);
+  }
+
+  docViewer.innerHTML = "";
+  docViewer.appendChild(wrap);
+  if (locateIdx != null) {
+    img.addEventListener("load", () => {
+      const loc = docViewer.querySelector(".anno-box.loc");
+      if (loc) loc.scrollIntoView({ block: "center" });
+    });
+  }
+}
+
+function needleFor(c) {
+  const clean = t => (t || "").replace(/\s+/g, " ").trim();
+  if (c.del_text) return clean(c.del_text);
+  if (c.ins_text) return clean(c.ins_text);
+  if (c.quoted_text) {
+    let t = clean(c.quoted_text);
+    if (t.startsWith("...")) t = t.slice(3).trim();
+    if (t.endsWith("...")) t = t.slice(0, -3).trim();
+    // For snippet-style quotes ("...before [...] after...") use the longest
+    // concrete fragment; otherwise use the whole (possibly short) quote.
+    const parts = t.split("[...]").map(s => s.trim()).filter(Boolean);
+    if (parts.length) return parts.sort((a, b) => b.length - a.length)[0];
+    return t;
+  }
+  return "";
+}
+
+async function ensureDocPreview() {
+  if (!docReady()) {
+    docViewer.innerHTML = `<div class="empty">Load a document to preview it here.</div>`;
+    return;
+  }
+  const idx = selectedIdx != null ? selectedIdx : (allComments.length ? 0 : null);
+  await showPdfPage(pdfPage, idx);
+}
+
+async function loadDocxParagraphs() {
+  if (docxParagraphs) return docxParagraphs;
+  docxParagraphs = extractDocxParagraphs(activeFileBytes);
+  return docxParagraphs;
+}
+
+function needleFor(c) {
+  const clean = (t) => (t || "").replace(/\s+/g, " ").trim();
+  if (c.del_text) return clean(c.del_text);
+  if (c.ins_text) return clean(c.ins_text);
+  if (c.quoted_text) {
+    let t = clean(c.quoted_text);
+    if (t.startsWith("...")) t = t.slice(3).trim();
+    if (t.endsWith("...")) t = t.slice(0, -3).trim();
+    const parts = t.split("[...]").map((x) => x.trim()).filter(Boolean);
+    if (parts.length) return parts.sort((a, b) => b.length - a.length)[0];
+    return t;
+  }
+  return "";
+}
+
+async function showDocText(locateIdx = null) {
+  docViewer.innerHTML = `<div class="empty">Loading document text…</div>`;
+  const paras = await loadDocxParagraphs().catch(() => null);
+  if (!paras) {
+    docViewer.innerHTML = `<div class="empty">Text preview unavailable for this document.</div>`;
+    return;
+  }
+  const container = document.createElement("div");
+  container.className = "doc-text";
+  paras.forEach((text, k) => {
+    const p = document.createElement("p");
+    p.dataset.p = k;
+    p.textContent = text;
+    container.appendChild(p);
+  });
+  docViewer.innerHTML = "";
+  docViewer.appendChild(container);
+  if (locateIdx != null) markTextLocation(locateIdx);
+}
+
+function markTextLocation(idx) {
+  const c = allComments[idx];
+  const container = docViewer.querySelector(".doc-text");
+  if (!c || !container) return;
+  container.querySelectorAll("mark.loc").forEach((m) => m.replaceWith(document.createTextNode(m.textContent)));
+  container.querySelectorAll("p.ploc").forEach((p) => p.classList.remove("ploc"));
+
+  const needle = needleFor(c);
+  let target = -1, match = null;
+  if (needle) {
+    const rxBody = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+    const rx = new RegExp(rxBody, "i");
+    const N = docxParagraphs.length;
+    for (let off = 0; off < N; off++) {
+      const k = (docSearchCursor + off) % N;
+      const m = docxParagraphs[k].match(rx);
+      if (m) { target = k; match = m; break; }
+    }
+  }
+  if (target === -1) { toast("Location not found in document text"); return; }
+  docSearchCursor = target;
+
+  const p = container.querySelector(`p[data-p="${target}"]`);
+  p.classList.add("ploc");
+  const pos = match.index;
+  p.textContent = "";
+  p.append(document.createTextNode(docxParagraphs[target].slice(0, pos)));
+  const mark = document.createElement("mark");
+  mark.className = "loc";
+  mark.textContent = match[0];
+  p.append(mark);
+  p.append(document.createTextNode(docxParagraphs[target].slice(pos + match[0].length)));
+  requestAnimationFrame(() => p.scrollIntoView({ block: "center" }));
+}
+
+async function locateInDocument(idx, switchTab) {
+  if (!docReady() || idx == null) return;
+  if (switchTab) showTab("document");
+  if (activeTab !== "document") return;
+  selectedIdx = idx;
+  if (docKind === "pdf") {
+    await showPdfPage((allComments[idx] || {}).page || 1, idx);
+  } else {
+    if (!docViewer.querySelector(".doc-text")) await showDocText(idx);
+    else markTextLocation(idx);
+  }
+}
+
+pgPrev.addEventListener("click", () => {
+  if (docReady() && pdfPage > 1) showPdfPage(pdfPage - 1, selectedIdx);
+});
+pgNext.addEventListener("click", () => {
+  if (docReady() && pdfPage < pdfTotal) showPdfPage(pdfPage + 1, selectedIdx);
+});
+zoomIn.addEventListener("click", () => {
+  const i = SCALE_STEPS.indexOf(pdfScale);
+  if (i < SCALE_STEPS.length - 1) setPdfScale(SCALE_STEPS[i + 1]);
+});
+zoomOut.addEventListener("click", () => {
+  const i = SCALE_STEPS.indexOf(pdfScale);
+  if (i > 0) setPdfScale(SCALE_STEPS[i - 1]);
+});
+
+copyBtn.addEventListener("click", () => {
+  if (!markdownText) { toast("Nothing to copy yet"); return; }
+  navigator.clipboard.writeText(markdownText)
+    .then(() => toast("Markdown copied ✓"))
+    .catch(() => toast("Clipboard unavailable — use Save .md"));
+});
+
+saveBtn.addEventListener("click", () => {
+  if (!markdownText || !activeFile) { toast("Load a document first"); return; }
+  const base = activeFile.name.substring(0, activeFile.name.lastIndexOf(".")) || activeFile.name;
+  const blob = new Blob([markdownText], { type: "text/markdown;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${base}_comments.md`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  toast("Saved ✓");
+});
+</script>
+</body>
+</html>
