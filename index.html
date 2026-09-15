@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -106,6 +106,7 @@ nav .links a:hover{color:var(--accent)}
 .d1{animation-delay:.08s}.d2{animation-delay:.2s}.d3{animation-delay:.34s}.d4{animation-delay:.5s}.d5{animation-delay:.66s}
 
 /* scroll reveal */
+html.no-js .reveal{opacity:1;transform:none}
 .reveal{opacity:0;transform:translateY(34px);transition:opacity .8s var(--ease), transform .8s var(--spring);transition-delay:var(--d,0s)}
 .reveal.in{opacity:1;transform:none}
 
@@ -396,7 +397,7 @@ what the reviewer wanted)</pre>
   </div>
 </footer>
 
-<script>
+<script>document.documentElement.classList.remove("no-js");
 "use strict";
 // scroll-triggered reveals
 const io = new IntersectionObserver((entries) => {
